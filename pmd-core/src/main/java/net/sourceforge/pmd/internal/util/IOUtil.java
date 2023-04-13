@@ -448,28 +448,36 @@ public final class IOUtil {
             byte[] bytes = new byte[3];
             try {
                 int count = in.read(bytes);
-                if (count == 3 && bytes[0] == (byte) 0xef && bytes[1] == (byte) 0xbb && bytes[2] == (byte) 0xbf) {
-                    charset = StandardCharsets.UTF_8.name();
-                    return new byte[0]; // skip all 3 bytes
-                } else if (count >= 2 && bytes[0] == (byte) 0xfe && bytes[1] == (byte) 0xff) {
-                    charset = StandardCharsets.UTF_16BE.name();
-                    return new byte[] { bytes[2] };
-                } else if (count >= 2 && bytes[0] == (byte) 0xff && bytes[1] == (byte) 0xfe) {
-                    charset = StandardCharsets.UTF_16LE.name();
-                    return new byte[] { bytes[2] };
-                } else if (count == 3) {
+                byte[] read;
+                if (count == 3) { 
+                    if (bytes[0] == (byte) 0xef && bytes[1] == (byte) 0xbb && bytes[2] == (byte) 0xbf) {
+                        charset = StandardCharsets.UTF_8.name();
+                        return new byte[0]; // skip all 3 bytes
+                    }
                     return bytes;
-                }
-
-                if (count < 0) {
+                } else if (count >= 2) {
+                    if (bytes[0] == (byte) 0xfe && bytes[1] == (byte) 0xff) {
+                        charset = StandardCharsets.UTF_16BE.name();
+                        read = new byte[] { bytes[2] };
+                    } else if (bytes[0] == (byte) 0xff && bytes[1] == (byte) 0xfe) {
+                        charset = StandardCharsets.UTF_16LE.name();
+                        read = new byte[] { bytes[2] };
+                    } else {
+                        read = new byte[count];
+                        for (int i = 0; i < count; i++) {
+                            read[i] = bytes[i];
+                        }
+                    }
+                    return read;
+                } else if (count < 0) {
                     return new byte[0];
+                } else {
+                    read = new byte[count];
+                    for (int i = 0; i < count; i++) {
+                        read[i] = bytes[i];
+                    }
+                    return read;
                 }
-
-                byte[] read = new byte[count];
-                for (int i = 0; i < count; i++) {
-                    read[i] = bytes[i];
-                }
-                return read;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
