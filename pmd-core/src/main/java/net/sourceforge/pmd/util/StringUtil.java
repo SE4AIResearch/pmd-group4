@@ -76,33 +76,30 @@ public final class StringUtil {
      */
     public static int lineNumberAt(CharSequence charSeq, int offsetInclusive) {
         int len = charSeq.length();
-
+    
         if (offsetInclusive > len || offsetInclusive < 0) {
             return -1;
         }
-
-        int l = 1;
+    
+        int lineNumber = 1;
         for (int curOffset = 0; curOffset < offsetInclusive; curOffset++) {
-            // if we end up outside the string, then the line is undefined
-            if (curOffset >= len) {
-                return -1;
-            }
-
-            char c = charSeq.charAt(curOffset);
-            if (c == '\n') {
-                l++;
-            } else if (c == '\r') {
+            char currentChar = charSeq.charAt(curOffset);
+    
+            if (currentChar == '\n') {
+                lineNumber++;
+            } else if (currentChar == '\r') {
                 if (curOffset + 1 < len && charSeq.charAt(curOffset + 1) == '\n') {
                     if (curOffset == offsetInclusive - 1) {
-                        // the CR is assumed to be on the same line as the LF
-                        return l;
+                        // The CR is assumed to be on the same line as the LF
+                        return lineNumber;
                     }
-                    curOffset++; // SUPPRESS CHECKSTYLE jump to after the \n
+                    curOffset++; // Skip the next character (LF)
                 }
-                l++;
+                lineNumber++;
             }
         }
-        return l;
+    
+        return lineNumber;
     }
 
     /**
