@@ -416,10 +416,20 @@ public final class PmdAnalysis implements AutoCloseable {
         return GlobalAnalysisListener.tee(rendererListeners);
     }
 
-    private Set<Language> getApplicableLanguages(boolean quiet) {
+        private Set<Language> getApplicableLanguages(boolean quiet) {
         Set<Language> languages = new HashSet<>();
         LanguageVersionDiscoverer discoverer = configuration.getLanguageVersionDiscoverer();
 
+        // Extract nested loop into a separate method
+        collectApplicableLanguages(ruleSets, languages, discoverer, quiet);
+        // Extract nested loop into a separate method
+        handleLanguageDependencies(languages, configuration.getLanguageRegistry());
+
+        return languages;
+    }
+
+    private void collectApplicableLanguages(List<RuleSet> ruleSets, Set<Language> languages,
+            LanguageVersionDiscoverer discoverer, boolean quiet) {
         for (RuleSet ruleSet : ruleSets) {
             for (Rule rule : ruleSet.getRules()) {
                 Language ruleLanguage = rule.getLanguage();
@@ -430,15 +440,16 @@ public final class PmdAnalysis implements AutoCloseable {
                         configuration.checkLanguageIsRegistered(ruleLanguage);
                         languages.add(ruleLanguage);
                         if (!quiet) {
-                            LOG.trace("Using {} version ''{}''", version.getLanguage().getName(), version.getTerseName());
+                            LOG.trace("Using {} version ''{}''", version.getLanguage().getName(),
+                                    version.getTerseName());
                         }
                     }
                 }
             }
         }
+    }
 
-        // collect all dependencies, they shouldn't be filtered out
-        LanguageRegistry reg = configuration.getLanguageRegistry();
+    private void handleLanguageDependencies(Set<Language> languages, LanguageRegistry reg) {
         boolean changed;
         do {
             changed = false;
@@ -448,15 +459,13 @@ public final class PmdAnalysis implements AutoCloseable {
                     if (depLang == null) {
                         // todo maybe report all then throw
                         throw new IllegalStateException(
-                            "Language " + lang.getId() + " has unsatisfied dependencies: "
-                                + depId + " is not found in " + reg
-                        );
+                                "Language " + lang.getId() + " has unsatisfied dependencies: "
+                                        + depId + " is not found in " + reg);
                     }
                     changed |= languages.add(depLang);
                 }
             }
         } while (changed);
-        return languages;
     }
 
     /**
