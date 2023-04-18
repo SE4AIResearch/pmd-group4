@@ -253,12 +253,10 @@ public class PMDParameters {
      * @throws IllegalArgumentException if the parameters are inconsistent or incomplete
      */
     public @NonNull PMDConfiguration toConfiguration(LanguageRegistry registry) {
-        if (null == this.getSourceDir() && null == this.getUri() && null == this.getFileListPath()) {
-            throw new IllegalArgumentException(
-                    "Please provide a parameter for source root directory (-dir or -d), database URI (-uri or -u), or file list path (-filelist).");
-        }
+        validateInputParameters();
+    
         PMDConfiguration configuration = new PMDConfiguration();
-        configuration.setInputPaths(this.getInputPaths().stream().collect(Collectors.joining(",")));
+        setInputPaths(configuration);
         configuration.setInputFilePath(this.getFileListPath());
         configuration.setIgnoreFilePath(this.getIgnoreListPath());
         configuration.setInputUri(this.getUri());
@@ -279,17 +277,40 @@ public class PMDParameters {
         configuration.setFailOnViolation(this.isFailOnViolation());
         configuration.setAnalysisCacheLocation(this.cacheLocation);
         configuration.setIgnoreIncrementalAnalysis(this.isIgnoreIncrementalAnalysis());
-
+    
         LanguageVersion forceLangVersion = getForceLangVersion(registry);
         if (forceLangVersion != null) {
             configuration.setForceLanguageVersion(forceLangVersion);
         }
-
+    
         LanguageVersion languageVersion = getLangVersion(registry);
         if (languageVersion != null) {
             configuration.getLanguageVersionDiscoverer().setDefaultLanguageVersion(languageVersion);
         }
-
+    
+        setLanguageVersions(configuration);
+    
+        try {
+            configuration.prependAuxClasspath(this.getAuxclasspath());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid auxiliary classpath: " + e.getMessage(), e);
+        }
+    
+        return configuration;
+    }
+    
+    private void validateInputParameters() {
+        if (null == this.getSourceDir() && null == this.getUri() && null == this.getFileListPath()) {
+            throw new IllegalArgumentException(
+                    "Please provide a parameter for source root directory (-dir or -d), database URI (-uri or -u), or file list path (-filelist).");
+        }
+    }
+    
+    private void setInputPaths(PMDConfiguration configuration) {
+        configuration.setInputPaths(this.getInputPaths().stream().collect(Collectors.joining(",")));
+    }
+    
+    private void setLanguageVersions(PMDConfiguration configuration) {
         for (String langVerStr : this.getLanguageVersions()) {
             int dashPos = langVerStr.indexOf('-');
             if (dashPos == -1) {
@@ -307,15 +328,7 @@ public class PMDParameters {
             }
             configuration.getLanguageVersionDiscoverer().setDefaultLanguageVersion(langVer);
         }
-
-        try {
-            configuration.prependAuxClasspath(this.getAuxclasspath());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid auxiliary classpath: " + e.getMessage(), e);
-        }
-        return configuration;
     }
-
 
     public boolean isIgnoreIncrementalAnalysis() {
         return noCache;
